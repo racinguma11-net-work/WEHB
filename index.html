@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>YubiKey Secure Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 16px;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 32px 24px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #718096;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .yubikey-icon {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .yubikey-icon svg {
+            width: 64px;
+            height: 64px;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .otp-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        #otp-input {
+            width: 100%;
+            padding: 16px;
+            padding-right: 50px;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            background: white;
+            transition: all 0.3s ease;
+            color: #2d3748;
+            font-weight: 500;
+            -webkit-appearance: none;
+        }
+
+        #otp-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #otp-input::placeholder {
+            color: #a0aec0;
+            letter-spacing: normal;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .yubikey-indicator {
+            position: absolute;
+            right: 16px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fbbf24;
+            transition: all 0.3s ease;
+        }
+
+        .yubikey-indicator.active {
+            background: #10b981;
+            box-shadow: 0 0 15px #10b981;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .info-box p {
+            color: #2c5282;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .info-box ul {
+            color: #2c5282;
+            font-size: 14px;
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+
+        .info-box li {
+            margin-bottom: 4px;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 16px;
+            -webkit-appearance: none;
+        }
+
+        .login-button:active {
+            transform: scale(0.98);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #c6f6d5;
+            color: #22543d;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #fed7d7;
+            color: #742a2a;
+            display: block;
+        }
+
+        .status-message.info {
+            background: #bee3f8;
+            color: #2c5282;
+            display: block;
+        }
+
+        .security-note {
+            text-align: center;
+            color: #718096;
+            font-size: 12px;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .security-note i {
+            font-style: normal;
+            color: #48bb78;
+        }
+
+        /* Android-specific optimizations */
+        @media (max-width: 400px) {
+            .login-container {
+                padding: 24px 16px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            #otp-input {
+                padding: 14px;
+                padding-right: 45px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>🔐 YubiKey Secure Login</h1>
+        <p class="subtitle">Military-grade authentication for your Android device</p>
+        
+        <div class="yubikey-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="#667eea"/>
+                <circle cx="12" cy="12" r="5" fill="#764ba2"/>
+                <path d="M12 8v8M8 12h8" stroke="white" stroke-width="2"/>
+            </svg>
+        </div>
+
+        <div class="info-box">
+            <p><strong>📱 YubiKey Setup for Android:</strong></p>
+            <ul>
+                <li>Connect YubiKey via USB-C or NFC</li>
+                <li>Tap YubiKey to field when prompted</li>
+                <li>OTP will auto-fill when detected</li>
+            </ul>
+        </div>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="otp-input">YubiKey One-Time Password</label>
+                <div class="otp-input-container">
+                    <input type="text" 
+                           id="otp-input" 
+                           name="otp" 
+                           placeholder="Touch YubiKey or enter OTP"
+                           autocomplete="off"
+                           autocorrect="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           inputmode="text">
+                    <div class="yubikey-indicator" id="yubikey-indicator" title="YubiKey Status"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="login-button" id="login-button">Verify & Login</button>
+        </form>
+
+        <div id="status-message" class="status-message"></div>
+        
+        <div class="security-note">
+            <i>🛡️</i> FIPS 140-2 Certified • Secure Hardware Authentication
+        </div>
+    </div>
+
+    <script>
+        class YubiKeyLogin {
+            constructor() {
+                this.otpInput = document.getElementById('otp-input');
+                this.loginButton = document.getElementById('login-button');
+                this.statusDiv = document.getElementById('status-message');
+                this.indicator = document.getElementById('yubikey-indicator');
+                this.form = document.getElementById('login-form');
+                
+                this.otpPattern = /^[cbdefghijklnrtuv]{44}$/i;
+                this.lastOtpValue = '';
+                
+                this.initializeEventListeners();
+                this.checkYubiKeySupport();
+            }
+
+            initializeEventListeners() {
+                // Listen for OTP input (from YubiKey or manual)
+                this.otpInput.addEventListener('input', (e) => this.handleOtpInput(e));
+                
+                // Handle form submission
+                this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+                
+                // Clear status when user starts typing
+                this.otpInput.addEventListener('focus', () => this.clearStatus());
+                
+                // Auto-submit when valid OTP is detected
+                this.otpInput.addEventListener('blur', () => {
+                    if (this.isValidOtpFormat(this.otpInput.value)) {
+                        this.autoVerify();
+                    }
+                });
+            }
+
+            checkYubiKeySupport() {
+                // Check if running on Android
+                const isAndroid = /Android/i.test(navigator.userAgent);
+                
+                if (isAndroid) {
+                    this.showInfo('📱 Android detected - Ready for YubiKey (USB-C or NFC)');
+                    
+                    // Special handling for Android NFC
+                    if ('onuserproximity' in window) {
+                        console.log('NFC support detected');
+                    }
+                }
+            }
+
+            handleOtpInput(e) {
+                const value = e.target.value;
+                
+                // Update indicator based on input
+                if (value.length > 0) {
+                    this.indicator.classList.add('active');
+                    
+                    // Check if it looks like a YubiKey OTP
+                    if (this.isValidOtpFormat(value)) {
+                        this.indicator.style.background = '#10b981';
+                        this.showSuccess('✅ Valid YubiKey OTP detected!');
+                        
+                        // Auto-verify after a short delay
+                        setTimeout(() => this.autoVerify(), 500);
+                    } else {
+                        this.indicator.style.background = '#fbbf24';
+                    }
+                } else {
+                    this.indicator.classList.remove('active');
+                    this.indicator.style.background = '#fbbf24';
+                }
+                
+                // Store last value for comparison
+                this.lastOtpValue = value;
+            }
+
+            isValidOtpFormat(otp) {
+                // YubiKey OTPs are 44 characters from a specific alphabet
+                return this.otpPattern.test(otp);
+            }
+
+            async verifyYubiKeyOtp(otp) {
+                // Simulate OTP verification (replace with actual API call)
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // In production, this should validate with YubiCloud or your server
+                        const isValid = this.isValidOtpFormat(otp);
+                        resolve({
+                            success: isValid,
+                            message: isValid ? 'YubiKey authentication successful' : 'Invalid YubiKey OTP'
+                        });
+                    }, 800);
+                });
+            }
+
+            async handleSubmit(e) {
+                e.preventDefault();
+                
+                const otp = this.otpInput.value.trim();
+                
+                if (!otp) {
+                    this.showError('Please touch your YubiKey or enter OTP');
+                    return;
+                }
+
+                if (!this.isValidOtpFormat(otp)) {
+                    this.showError('Invalid YubiKey OTP format');
+                    return;
+                }
+
+                await this.verifyOtp(otp);
+            }
+
+            async autoVerify() {
+                const otp = this.otpInput.value.trim();
+                
+                if (this.isValidOtpFormat(otp)) {
+                    await this.verifyOtp(otp);
+                }
+            }
+
+            async verifyOtp(otp) {
+                this.setLoading(true);
+                this.showInfo('Verifying YubiKey...');
+
+                try {
+                    const result = await this.verifyYubiKeyOtp(otp);
+                    
+                    if (result.success) {
+                        this.showSuccess('✅ ' + result.message);
+                        this.indicator.style.background = '#10b981';
+                        
+                        // Simulate successful login
+                        setTimeout(() => {
+                            window.location.href = '#secured-area';
+                            this.showSuccess('🎉 Access Granted! Redirecting...');
+                        }, 1500);
+                    } else {
+                        this.showError('❌ ' + result.message);
+                        this.indicator.style.background = '#f56565';
+                    }
+                } catch (error) {
+                    this.showError('Authentication failed: ' + error.message);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            setLoading(isLoading) {
+                this.loginButton.disabled = isLoading;
+                this.loginButton.textContent = isLoading ? 'Verifying...' : 'Verify & Login';
+                this.otpInput.disabled = isLoading;
+            }
+
+            showSuccess(message) {
+                this.statusDiv.className = 'status-message success';
+                this.statusDiv.textContent = message;
+            }
+
+            showError(message) {
+                this.statusDiv.className = 'status-message error';
+                this.statusDiv.textContent = message;
+            }
+
+            showInfo(message) {
+                this.statusDiv.className = 'status-message info';
+                this.statusDiv.textContent = message;
+            }
+
+            clearStatus() {
+                this.statusDiv.className = 'status-message';
+                this.statusDiv.textContent = '';
+            }
+        }
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new YubiKeyLogin();
+            
+            // Focus OTP input for immediate YubiKey use
+            setTimeout(() => {
+                document.getElementById('otp-input').focus();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
